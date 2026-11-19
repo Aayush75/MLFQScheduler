@@ -1,0 +1,12 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedbench pipe 400 4
+RESULT,policy,mode,worker,pid,release,exit,response_time,cpu,wait,sleep,dispatches,demotions,boosts,q0,q1,q2,q3,wakeups,wake_delay,max_wake_delay,max_wait,checksum
+RESULT,MLFQ,pipe,0,4,2,24,7709,0,1,21,22,0,0,0,0,0,0,21,1038744,1014195,1,0
+RESULT,MLFQ,pipe,1,5,2,19,12110,10,7,0,11,3,0,1,2,4,3,0,0,0,4,14962766015113814613
+RESULT,MLFQ,pipe,2,6,2,23,988506,11,10,0,12,3,0,1,2,4,4,0,0,0,4,14962766015113814613
+RESULT,MLFQ,pipe,3,7,2,24,1992564,0,2,20,22,0,0,0,0,0,0,21,29113,6181,2,6689191919242084843
+BENCH DONE
+$ 

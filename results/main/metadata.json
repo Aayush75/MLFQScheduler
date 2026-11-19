@@ -1,0 +1,27 @@
+{
+  "started_utc": "2026-11-19T05:48:45.654730+00:00",
+  "upstream_commit": "fa2ddcb7ca87a77af579380a6eafd5aff163b44f",
+  "source_sha256": "ebbacf4cc46818e3a2d0bc402d7c101ca031903c9678177d3157e146474efa8c",
+  "host": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+  "compiler": "riscv64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "cpus": 1,
+  "timer_interval": 1000000,
+  "timebase_hz": 10000000,
+  "repeats": 10,
+  "units": 400,
+  "workers": 4,
+  "boost": 64,
+  "quanta": "1,2,4,8",
+  "modes": [
+    "cpu",
+    "mixed",
+    "short",
+    "pipe"
+  ],
+  "ordering": "alternate DEFAULT/MLFQ order by repetition; fresh boot per workload",
+  "finished_utc": "2026-11-19T05:55:09.592215+00:00",
+  "delivered_source_sha256": "e44b14c4fa3ba2ebd6d3b7fead85e2899035f91658742247d6eeda0f06d29cf0",
+  "post_evaluation_changes": "Only schedtest.c: avoid compile-time modulo zero with BOOST=0; explicitly skip an inapplicable short-boost sleeper setup. Kernel and benchmark workload unchanged."
+}

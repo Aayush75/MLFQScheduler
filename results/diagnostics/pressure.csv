@@ -1,0 +1,3 @@
+policy,boost,start,stop,arrivals,cpu_received,boosts,max_wait
+MLFQ,0,40,80,40,0,0,40
+MLFQ,64,40,89,24,1,1,24

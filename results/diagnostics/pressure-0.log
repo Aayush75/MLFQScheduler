@@ -1,0 +1,9 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedbench starve 40
+PRESSURE,policy,boost,start,stop,arrivals,cpu_received,boosts,max_wait
+PRESSURE,MLFQ,0,40,80,40,0,0,40
+BENCH DONE
+$ 

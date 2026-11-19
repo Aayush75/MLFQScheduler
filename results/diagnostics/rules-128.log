@@ -1,0 +1,14 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedtest
+schedtest: MLFQ boost=128
+PASS: statistics API and safe reaping
+PASS: fork, ordinary exit, and process-slot reuse
+PASS: demotion, sleep budgets, bottom queue, and multi-tick slices
+PASS: three competing workers, CPU service range 30..30 ticks
+PASS: higher-priority wakeup and killed-worker cleanup
+PASS: periodic boost includes sleepers without waking them
+SCHEDTEST ALL PASSED
+$ 

@@ -1,0 +1,20 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedstat
+policy=MLFQ, quantum=1,2,4,8, boost=64 ticks
+PID STATE Q USED CPU WAIT SLEEP DISPATCH DEMOTE BOOST Q0 Q1 Q2 Q3
+1 2 0 0 0 1 0 24 0 0 0 0 0 0
+2 2 0 0 0 0 0 12 0 0 0 0 0 0
+3 4 0 0 0 0 0 6 0 0 0 0 0 0
+$ schedtest
+schedtest: MLFQ boost=64
+PASS: statistics API and safe reaping
+PASS: fork, ordinary exit, and process-slot reuse
+PASS: demotion, sleep budgets, bottom queue, and multi-tick slices
+PASS: three competing workers, CPU service range 14..16 ticks
+PASS: higher-priority wakeup and killed-worker cleanup
+PASS: periodic boost includes sleepers without waking them
+SCHEDTEST ALL PASSED
+$ 

@@ -1,0 +1,2 @@
+# Only plot generation needs this; console/tests/benchmark collection use stdlib.
+matplotlib==3.11.2
