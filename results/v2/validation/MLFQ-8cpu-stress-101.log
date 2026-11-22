@@ -1,0 +1,16 @@
+
+xv6 kernel is booting
+
+hart 4 starting
+hart 1 starting
+hart 3 starting
+hart 5 starting
+hart 7 starting
+hart 2 starting
+hart 6 starting
+init: starting sh
+$ schedstress 101 100 12
+STRESS seed=101 workers=12 rounds=100 cpus=8 policy=MLFQ
+STRESS_RESULT,1200,118,108,116,129,135
+SCHEDSTRESS ALL PASSED
+$ 

@@ -1,0 +1,11 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 3 starting
+hart 2 starting
+hart 4 starting
+init: starting sh
+$ schedtest overflow
+SCHEDTEST ALL PASSED trace overflow
+$ 

@@ -1,0 +1,13 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+init: starting sh
+$ schedbench pipe 1200 4
+RESULT,mode,worker,pid,role,release,first,done,cpu_time,wait_time,sleep_time,dispatches,demotions,boosts,migrations,wakeups,wake_delay,lifetime_max_wake_delay,pipe_samples,pipe_delay,pipe_max,work_units,checksum,q0,q1,q2,q3,cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7
+RESULT,pipe,0,4,3,2336647,2343177,4743851,36382,114709,2249583,24,0,0,2,24,114709,99725,0,0,0,0,0,36382,0,0,0,35175,1207,0,0,0,0,0,0
+RESULT,pipe,3,7,4,2336647,2500061,4747173,28056,118325,2100731,24,0,0,1,24,118325,98668,24,144552,99451,0,4981550996221936566,28056,0,0,0,27000,1056,0,0,0,0,0,0
+RESULT,pipe,1,5,0,2336647,2346976,6167117,3748204,71937,0,24,3,0,0,0,0,0,0,0,0,1200,10232747729397442514,197625,400000,800000,2350579,3748204,0,0,0,0,0,0,0
+RESULT,pipe,2,6,0,2336647,2402467,6374282,3964187,7628,0,9,3,0,0,0,0,0,0,0,0,1200,10232747729397442514,193023,400000,800000,2571164,0,3964187,0,0,0,0,0,0
+BENCH DONE
+$ 

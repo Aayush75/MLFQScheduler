@@ -1,96 +1,154 @@
-"""Summarize independent runs and plot medians with observed min/max ranges."""
-
+"""Summarize independent multicore runs and render reproducible figures."""
 import argparse
 from collections import defaultdict
 import csv
 from pathlib import Path
 from statistics import median
 
+TIMEBASE=10000000
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("directory", type=Path)
-    args = parser.parse_args()
-    with (args.directory / "samples.csv").open() as file:
-        rows = list(csv.DictReader(file))
-    runs = defaultdict(list)
-    for row in rows:
-        runs[row["mode"], row["policy"], row["run"]].append(row)
-    metrics = defaultdict(list)
-    for (mode, policy, run), records in runs.items():
-        # One independent sample per run. Do not pretend workers from the same
-        # run are independent experimental repetitions.
-        turnaround = [int(r["exit"]) - int(r["release"]) for r in records]
-        response = [int(r["response_time"]) / 10000 for r in records]  # ms
-        metrics[mode, policy, "mean_turnaround_ticks"].append(sum(turnaround) / len(records))
-        metrics[mode, policy, "mean_response_ms"].append(sum(response) / len(records))
-        metrics[mode, policy, "dispatches"].append(sum(int(r["dispatches"]) for r in records))
-        elapsed = max(int(r["exit"]) for r in records) - min(int(r["release"]) for r in records)
-        metrics[mode, policy, "jobs_per_second"].append(len(records) / (elapsed / 10))
-        # Last worker is the blocking, short, or pipe-reader job of interest.
-        special = max(records, key=lambda r: int(r["worker"]))
-        metrics[mode, policy, "last_worker_turnaround_ticks"].append(
-            int(special["exit"]) - int(special["release"]))
-        if mode in {"mixed", "pipe"}:
-            count = int(special["wakeups"])
-            if not count:
-                raise RuntimeError("Missing blocking-worker wakeup samples")
-            metrics[mode, policy, "wake_delay_ms"].append(int(special["wake_delay"]) / count / 10000)
-            metrics[mode, policy, "max_wake_delay_ms"].append(int(special["max_wake_delay"]) / 10000)
-    summaries = []
-    for (mode, policy, metric), values in sorted(metrics.items()):
-        summaries.append(dict(mode=mode, policy=policy, metric=metric, runs=len(values),
-                              median=median(values), minimum=min(values), maximum=max(values)))
-    with (args.directory / "summary.csv").open("w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=list(summaries[0]))
-        writer.writeheader()
-        writer.writerows(summaries)
-    print(f"Summarized {len(rows)} worker records from {len(runs)} independent runs.")
 
-    # Only plotting needs an extra package; collection uses the standard library.
+def summarize(directory):
+    with (directory/'samples.csv').open() as stream:
+        rows=list(csv.DictReader(stream))
+    groups=defaultdict(list)
+    for r in rows:
+        groups[int(r['cpus']),r['mode'],r['policy'],int(r['run'])].append(r)
+    samples=[]
+    for (cpus,mode,policy,run),records in sorted(groups.items()):
+        n=len(records)
+        value=lambda key: [int(r[key]) for r in records]
+        release=min(value('release'))
+        elapsed=max(value('done'))-release
+        total_cpu=sum(value('cpu_time'))
+        special=max(records,key=lambda r:int(r['worker']))
+        data={
+            'mean_turnaround_ms':sum(int(r['done'])-int(r['release']) for r in records)/n/10000,
+            'mean_initial_response_ms':sum(int(r['first'])-int(r['release']) for r in records)/n/10000,
+            'mean_wait_ms':sum(value('wait_time'))/n/10000,
+            'makespan_ms':elapsed/10000,
+            'jobs_per_second':n*TIMEBASE/elapsed,
+            'work_cpu_utilization':total_cpu/(cpus*elapsed),
+            'dispatch_spans':n+sum(value('dispatches')),
+            'migrations':sum(value('migrations')),
+            'special_turnaround_ms':(int(special['done'])-int(special['release']))/10000,
+        }
+        if int(special['wakeups']):
+            data['special_wake_delay_ms']=int(special['wake_delay'])/int(special['wakeups'])/10000
+        if int(special['pipe_samples']):
+            data['pipe_message_delay_ms']=int(special['pipe_delay'])/int(special['pipe_samples'])/10000
+            data['pipe_message_max_ms']=int(special['pipe_max'])/10000
+        if mode=='fair':
+            service=value('cpu_time')
+            # The common deadline is checked between work chunks. Retain
+            # checkpoint overshoot rather than claiming exact clipping.
+            deadline=release+int(records[0]['units'])*10000
+            data['fair_stop_overshoot_ms']=max(0,max(value('done'))-deadline)/10000
+            data['jain_fairness']=sum(service)**2/(n*sum(v*v for v in service))
+            data['work_units_per_second']=sum(value('work_units'))*TIMEBASE/elapsed
+        for metric,v in data.items():
+            samples.append(dict(cpus=cpus,mode=mode,policy=policy,run=run,metric=metric,value=v))
+    with (directory/'run_metrics.csv').open('w',newline='') as stream:
+        writer=csv.DictWriter(stream,fieldnames=list(samples[0]))
+        writer.writeheader(); writer.writerows(samples)
+    grouped=defaultdict(list)
+    for r in samples:
+        grouped[r['cpus'],r['mode'],r['policy'],r['metric']].append(r['value'])
+    summaries=[]
+    for (cpus,mode,policy,metric),values in sorted(grouped.items()):
+        summaries.append(dict(cpus=cpus,mode=mode,policy=policy,metric=metric,runs=len(values),
+                              median=median(values),minimum=min(values),maximum=max(values)))
+    with (directory/'summary.csv').open('w',newline='') as stream:
+        writer=csv.DictWriter(stream,fieldnames=list(summaries[0]))
+        writer.writeheader(); writer.writerows(summaries)
+    return rows,groups,grouped
+
+
+def plots(directory, grouped):
     import matplotlib
-    matplotlib.use("Agg")
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    plt.rcParams.update({'font.size':10,'axes.spines.top':False,'axes.spines.right':False})
+    figures=directory/'figures'; figures.mkdir(exist_ok=True)
+    cpus=sorted({key[0] for key in grouped})
+    modes={key[1] for key in grouped}
+    styles=[('DEFAULT','#607d8b','o'),('MLFQ','#1565c0','s')]
 
-    plt.rcParams.update({"font.size": 11, "axes.spines.top": False, "axes.spines.right": False})
-    plots = [
-        ("mean_turnaround_ticks", "Mean turnaround (guest ticks)", ["cpu", "mixed", "short", "pipe"]),
-        ("wake_delay_ms", "Mean wakeup-to-dispatch delay (ms)", ["mixed", "pipe"]),
-        ("dispatches", "Total worker dispatches", ["cpu", "mixed", "short", "pipe"]),
-        ("last_worker_turnaround_ticks", "Special worker turnaround (guest ticks)", ["mixed", "short", "pipe"]),
-    ]
-    figure_dir = args.directory / "figures"
-    figure_dir.mkdir(exist_ok=True)
-    for metric, label, requested_modes in plots:
-        modes = [m for m in requested_modes if (m, "DEFAULT", metric) in metrics]
-        if not modes:
-            continue
-        fig, ax = plt.subplots(figsize=(8, 4.7), layout="constrained")
-        for offset, policy, color in [(-0.19, "DEFAULT", "#607d8b"), (0.19, "MLFQ", "#1976d2")]:
-            values = [metrics[m, policy, metric] for m in modes]
-            centers = [median(v) for v in values]
-            ranges = [[c - min(v) for c, v in zip(centers, values)],
-                      [max(v) - c for c, v in zip(centers, values)]]
-            positions = [i + offset for i in range(len(modes))]
-            if metric == "wake_delay_ms":
-                ax.errorbar(positions, centers, yerr=ranges, fmt="o",
-                            capsize=4, label=policy, color=color)
-            else:
-                ax.bar(positions, centers, 0.36, yerr=ranges,
-                       capsize=4, label=policy, color=color)
-        ax.set_xticks(range(len(modes)), modes)
+    def lines(ax,mode,metric,label,log=False):
+        for policy,color,marker in styles:
+            points=[c for c in cpus if (c,mode,policy,metric) in grouped]
+            if not points: continue
+            values=[grouped[c,mode,policy,metric] for c in points]
+            centers=[median(v) for v in values]
+            error=[[c-min(v) for c,v in zip(centers,values)],
+                   [max(v)-c for c,v in zip(centers,values)]]
+            ax.errorbar(points,centers,yerr=error,marker=marker,color=color,label=policy,capsize=3)
+        ax.set_xticks(cpus)
+        ax.set_xlabel('Emulated CPUs')
         ax.set_ylabel(label)
-        if metric == "wake_delay_ms":
-            ax.set_yscale("log")
-            ax.set_ylabel(label + " — log scale")
-        else:
-            ax.set_ylim(bottom=0)
-        ax.legend()
-        ax.set_title("Median across runs; error bars show observed min–max", fontsize=11)
-        fig.savefig(figure_dir / f"{metric}.png", dpi=180)
-        fig.savefig(figure_dir / f"{metric}.pdf")
+        if log: ax.set_yscale('log')
+        else: ax.set_ylim(bottom=0)
+        ax.grid(alpha=.2)
+
+    def save(fig,name):
+        fig.savefig(figures/(name+'.png'),dpi=180)
+        fig.savefig(figures/(name+'.pdf'))
         plt.close(fig)
 
+    latency_modes=[mode for mode in ['mixed','pipe'] if mode in modes]
+    if latency_modes:
+        fig,axes=plt.subplots(1,len(latency_modes),figsize=(5.5*len(latency_modes),4.4),
+                              squeeze=False,layout='constrained')
+        for ax,mode in zip(axes.flat,latency_modes):
+            lines(ax,mode,'special_wake_delay_ms','Mean wakeup delay (ms; log scale)',True)
+            ax.set_title(mode)
+        axes.flat[0].legend()
+        fig.suptitle('Median across independent runs; error bars are observed min-max')
+        save(fig,'wakeup_latency')
 
-if __name__ == "__main__":
+    turnaround_modes=[m for m in ['cpu','mixed','short','pipe','phase','fair'] if m in modes]
+    columns=min(3,len(turnaround_modes))
+    rows=(len(turnaround_modes)+columns-1)//columns
+    fig,axes=plt.subplots(rows,columns,figsize=(4.4*columns,3.5*rows),
+                          squeeze=False,layout='constrained')
+    for ax,mode in zip(axes.flat,turnaround_modes):
+        if mode=='fair':
+            lines(ax,mode,'jain_fairness',"Jain's CPU-service fairness")
+            ax.set_ylim(0,1.02)
+            ax.set_title('Fixed-window fairness')
+        else:
+            lines(ax,mode,'mean_turnaround_ms','Mean turnaround (ms)')
+            ax.set_title(mode)
+    for ax in list(axes.flat)[len(turnaround_modes):]:
+        ax.set_visible(False)
+    axes.flat[0].legend()
+    fig.suptitle('Matched workloads at each CPU count; median and observed range')
+    save(fig,'turnaround_and_fairness')
+
+    if 'cpu' in modes:
+        fig,axes=plt.subplots(1,2,figsize=(11,4.4),layout='constrained')
+        lines(axes[0],'cpu','dispatch_spans','Worker dispatch spans')
+        lines(axes[1],'cpu','makespan_ms','CPU-workload makespan (ms)')
+        axes[0].legend()
+        fig.suptitle('CPU workload: dispatch spans include the initial work turn')
+        save(fig,'cpu_execution')
+
+    if 'short' in modes:
+        fig,ax=plt.subplots(figsize=(7,4.5),layout='constrained')
+        lines(ax,'short','special_turnaround_ms','Short-job turnaround (ms)')
+        ax.legend()
+        ax.set_title('Short-job behavior is reported separately from the workload mean')
+        save(fig,'short_job')
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('directory',type=Path)
+    args=parser.parse_args()
+    rows,runs,grouped=summarize(args.directory)
+    plots(args.directory,grouped)
+    print(f'Summarized {len(rows)} worker records from {len(runs)} independent boots.')
+
+
+if __name__=='__main__':
     main()

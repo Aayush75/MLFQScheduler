@@ -1,0 +1,12 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedbench fair 400 4
+RESULT,mode,worker,pid,role,release,first,done,cpu_time,wait_time,sleep_time,dispatches,demotions,boosts,migrations,wakeups,wake_delay,lifetime_max_wake_delay,pipe_samples,pipe_delay,pipe_max,work_units,checksum,q0,q1,q2,q3,cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7
+RESULT,fair,0,4,6,2557461,2566919,6567273,969429,3030925,0,10,0,0,0,0,0,0,0,0,0,213,16735383855303275467,969429,0,0,0,969429,0,0,0,0,0,0,0
+RESULT,fair,1,5,6,2557461,2640537,6571383,1014026,2916820,0,10,0,0,0,0,0,0,0,0,0,205,10249130151301450124,1014026,0,0,0,1014026,0,0,0,0,0,0,0
+RESULT,fair,2,6,6,2557461,2742177,6560039,992523,2825339,0,9,0,0,0,0,0,0,0,0,0,204,16846486503444102720,992523,0,0,0,992523,0,0,0,0,0,0,0
+RESULT,fair,3,7,6,2557461,2844174,6563514,976687,2742653,0,9,0,0,0,0,0,0,0,0,0,193,1565859081573664597,976687,0,0,0,976687,0,0,0,0,0,0,0
+BENCH DONE
+$ 

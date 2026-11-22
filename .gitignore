@@ -1,4 +1,35 @@
+# Local Python environments and caches
 .venv/
+venv/
 __pycache__/
-*.pyc
-submission.zip
+*.py[cod]
+.pytest_cache/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated archives and local historical source snapshots
+/submission.zip
+/submission.zip.sha256
+/reference/
+
+# Local runs are ignored; canonical multicore evidence is retained.
+/results/*
+!/results/v2/
+/results/v2/*
+!/results/v2/RELEASE.json
+!/results/v2/validation/
+!/results/v2/validation-extra/
+!/results/v2/benchmarks/
+!/results/v2/scaling/
+!/results/v2/sensitivity/
+!/results/v2/pressure/
+!/results/v2/platform/
+!/results/v2/release/
+.runs/
+
+# Nested upstream Git metadata stays local. Build ignores are in xv6/.gitignore.
+/xv6/.git/

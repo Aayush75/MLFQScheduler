@@ -1,0 +1,10 @@
+{
+  "host": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "host_cpu_model": "Intel(R) Core(TM) Ultra 7 255H",
+  "host_logical_cpus": 16,
+  "host_available_cpus": 16,
+  "machine": "virt",
+  "cpus": 8,
+  "timebase_hz": 10000000,
+  "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)"
+}

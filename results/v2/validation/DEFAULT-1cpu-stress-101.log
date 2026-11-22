@@ -1,0 +1,9 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedstress 101 100 12
+STRESS seed=101 workers=12 rounds=100 cpus=1 policy=DEFAULT
+STRESS_RESULT,1200,118,108,116,129,135
+SCHEDSTRESS ALL PASSED
+$ 

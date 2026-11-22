@@ -1,66 +1,61 @@
-# Short demonstration
+# Running an interactive demonstration
 
-Run commands from Ubuntu, with the terminal visible to the professor.
-
-## 1. Explain the design
-
-Open `xv6/kernel/sched.h`: four quanta, one boost interval, one statistics
-record. Open `proc.c`: `runnable`, `schedtick`, `schedpreempt`, and `scheduler`.
-Explain logical FIFO queues and the deliberate single-CPU scope.
-
-## 2. Boot and test
+Inside Ubuntu:
 
 ```bash
 cd '/mnt/c/Users/Aayush/IITGN/CS 330/MLFQScheduler/xv6'
-make SCHED=MLFQ BOOST=64 QUANTA=1,2,4,8 qemu
+make qemu CPUS=4
 ```
 
-At the xv6 prompt:
+Inspect configuration and statistics, then run the correctness and stress checks:
 
 ```text
 schedstat
 schedtest
+schedstress 7 100 12
 ```
 
-Explain that the test output comes from assertions, not a hard-coded success
-message. It checks budget persistence, demotion, multi-tick turns, contention,
-priority preemption, and boosting sleepers.
-
-## 3. Show priority changes
+Compare CPU, blocking, short-job, pipe, phase-change, and fairness workloads:
 
 ```text
-schedbench trace 75
+schedbench cpu 1200 8
+schedbench mixed 1200 8
+schedbench short 1200 8
+schedbench pipe 1200 8
+schedbench phase 1200 8
+schedbench fair 400 8
 ```
 
-Point out Q0→Q1→Q2→Q3, cumulative per-queue CPU service, and the next global
-boost. The boost is tied to time since boot, not time since this command began.
-Trace output is a diagnostic and is not used in performance measurements.
+In fair mode, the numeric argument is the observation duration in milliseconds.
+In the other modes, it is a fixed arithmetic-work count.
 
-## 4. Show mixed workloads
+Capture a bounded trace and inspect it:
 
 ```text
-schedbench mixed 400 4
-schedbench pipe 400 4
+schedtest trace
+schedtrace
+schedctl trace 0
 ```
 
-Explain the CPU workers, the periodic blocker, and the actual pipe reader.
-`wake_delay / wakeups / 10000` gives mean wakeup delay in milliseconds on this
-QEMU machine. Zero sampled CPU does not mean zero execution.
+Change policy parameters without rebuilding:
 
-## 5. Switch policies and change a parameter
+```text
+schedctl boost 64
+schedctl 1 2 4 8 4 8 16 32 64
+schedstat
+```
 
-Exit QEMU with Ctrl-a, x. In Ubuntu:
+Exit with Ctrl-a, then x. To switch to the comparison policy:
 
 ```bash
-make SCHED=DEFAULT qemu
+make qemu SCHED=DEFAULT CPUS=4
 ```
 
-Run the same mixed workload, then show the pre-generated comparison plots.
-After exiting, try `make SCHED=MLFQ QUANTA=2,4,8,16 BOOST=128 qemu` and show
-the changed `schedstat` configuration. The Makefile notices changed settings.
+For a reproducible trace check and controlled boost experiment, use the host
+scripts rather than copying console output:
 
-## 6. Present results honestly
-
-Use `docs/REPORT.md` and `results/main/figures/`. Explain a measured improvement,
-a tradeoff, and the single-CPU/tick-sampling limitations. Keep raw CSV and test
-logs available if asked how a number was obtained.
+```bash
+cd ..
+python3 scripts/check_trace.py --cpus 4
+python3 scripts/diagnostics.py
+```

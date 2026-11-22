@@ -1,0 +1,20 @@
+
+xv6 kernel is booting
+
+init: starting sh
+$ schedtest
+schedtest policy=MLFQ cpus=1
+PASS API validation, atomic rejection, enumeration, and safe reaping
+PASS sub-tick accounting and exact CPU/state-time conservation
+PASS separate quanta/allotments, exact demotion, and bottom service
+PASS blocking budgets, early-yield adversary, and wakeup accounting
+PASS affinity enforcement and migrations across 1 CPUs
+PASS parallel execution and unique ownership on all CPUs
+PASS fixed-window fairness: service 301466..381712 us
+PASS higher-priority preemption before low-priority quantum expiry
+PASS repeated global boosts include sleepers without waking them
+PASS fork debt inheritance and exec history preservation
+PASS slot reuse and kill/sleep lifecycle races
+PASS concurrent budget changes, frequent boosts, and blocking workers
+SCHEDTEST ALL PASSED
+$ 

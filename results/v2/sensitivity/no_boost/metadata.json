@@ -1,0 +1,37 @@
+{
+  "started_utc": "2026-11-20T13:25:38.727732+00:00",
+  "version": 2,
+  "upstream_commit": "fa2ddcb7ca87a77af579380a6eafd5aff163b44f",
+  "source_sha256": "c7839c6fa733032b1ebbae59588455a87183d9b99b65ce6f7ecd12a45155d71d",
+  "kernel_source_sha256": "6aebff9a0d952bf1f4fe16434c9f38d8d3500dbea11a77b40129c484eb5d034e",
+  "timebase_hz": 10000000,
+  "timer_interval": 100000,
+  "cpus": [
+    4
+  ],
+  "repeats": 3,
+  "units": 1200,
+  "fair_ms": 400,
+  "workers": 0,
+  "boost": 0,
+  "quanta": "1,2,4,8",
+  "allotments": "2,4,8,16",
+  "checks": 1,
+  "modes": [
+    "mixed",
+    "phase"
+  ],
+  "workload_fork_inherit": 0,
+  "host": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+  "compiler": "riscv64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "ordering": "alternate policy order by repetition; isolated kernel and disk image per boot",
+  "kernels": {
+    "DEFAULT-4cpu": "9102991f270bb74a5d37db61bb2c25cdf9fd1a39727fb5874ce166f8b83b8ba6",
+    "MLFQ-4cpu": "d0d99e64e2b6970bb0f67106c70c9aca39831640861604af5a92f2bd2c292577"
+  },
+  "finished_boots": 12,
+  "worker_records": 96,
+  "finished_utc": "2026-11-20T13:26:28.021190+00:00"
+}

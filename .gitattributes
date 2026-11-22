@@ -1,0 +1,11 @@
+# Normalize project text across Windows and Linux.
+* text=auto eol=lf
+
+# Preserve the source bytes used by the recorded validation SHA-256 hashes.
+/xv6/** -text
+
+# Binary result artifacts must never undergo line-ending conversion.
+*.png binary
+*.pdf binary
+*.dtb binary
+*.zip binary

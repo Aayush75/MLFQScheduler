@@ -1,0 +1,11 @@
+{
+  "source_sha256": "c7839c6fa733032b1ebbae59588455a87183d9b99b65ce6f7ecd12a45155d71d",
+  "cpus": 1,
+  "timebase_hz": 10000000,
+  "kernel_sha256": "a0622696606b19591953e005c7921b88672e8d213a1e88a467019017a49ac9e3",
+  "finished_utc": "2026-11-20T13:26:57.417054+00:00",
+  "offered_arrivals": 40,
+  "target_cpu_per_arrival": 400000,
+  "window": 10000000,
+  "metric": "sum of CHARGE intervals clipped to the fixed observation window"
+}

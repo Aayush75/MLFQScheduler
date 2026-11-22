@@ -1,0 +1,18 @@
+test_boost_preserves_merged_fifo (__main__.ReplayTests.test_boost_preserves_merged_fifo) ... ok
+test_rejects_affinity_violation (__main__.ReplayTests.test_rejects_affinity_violation) ... ok
+test_rejects_duplicate_cpu_owner (__main__.ReplayTests.test_rejects_duplicate_cpu_owner) ... ok
+test_rejects_lost_execution (__main__.ReplayTests.test_rejects_lost_execution) ... ok
+test_rejects_missing_event (__main__.ReplayTests.test_rejects_missing_event) ... ok
+test_rejects_same_process_on_two_cpus (__main__.ReplayTests.test_rejects_same_process_on_two_cpus) ... ok
+test_rejects_trace_without_initial_snapshot (__main__.ReplayTests.test_rejects_trace_without_initial_snapshot) ... ok
+test_rejects_wrong_demotion (__main__.ReplayTests.test_rejects_wrong_demotion) ... ok
+test_rejects_wrong_fifo (__main__.ReplayTests.test_rejects_wrong_fifo) ... ok
+test_rejects_wrong_priority (__main__.ReplayTests.test_rejects_wrong_priority) ... ok
+test_rejects_wrong_quantum_reinsertion (__main__.ReplayTests.test_rejects_wrong_quantum_reinsertion) ... ok
+test_seed_preserves_pending_rotation (__main__.ReplayTests.test_seed_preserves_pending_rotation) ... ok
+test_valid_priority_fifo_and_budget_trace (__main__.ReplayTests.test_valid_priority_fifo_and_budget_trace) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.002s
+
+OK

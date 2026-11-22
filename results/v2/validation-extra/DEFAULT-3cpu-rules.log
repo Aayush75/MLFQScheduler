@@ -1,0 +1,19 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ schedtest
+schedtest policy=DEFAULT cpus=3
+PASS API validation, atomic rejection, enumeration, and safe reaping
+PASS sub-tick accounting and exact CPU/state-time conservation
+SKIP feedback policy under DEFAULT
+PASS blocking budgets, early-yield adversary, and wakeup accounting
+PASS affinity enforcement and migrations across 3 CPUs
+PASS parallel execution and unique ownership on all CPUs
+PASS fixed-window fairness: service 327419..334534 us
+PASS slot reuse and kill/sleep lifecycle races
+PASS concurrent budget changes, frequent boosts, and blocking workers
+SCHEDTEST ALL PASSED
+$ 

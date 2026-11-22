@@ -1,0 +1,8 @@
+{
+  "source_sha256": "c7839c6fa733032b1ebbae59588455a87183d9b99b65ce6f7ecd12a45155d71d",
+  "cpus": 4,
+  "status": "passed",
+  "kernel_sha256": "c4c3104f7fc6d72a2961bb4d58b6d0749e8e524ee55a7d8b3528a6197758673e",
+  "matches_validated_kernel": true,
+  "seconds": 5.392
+}

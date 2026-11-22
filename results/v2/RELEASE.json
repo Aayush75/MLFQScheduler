@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "source_sha256": "c7839c6fa733032b1ebbae59588455a87183d9b99b65ce6f7ecd12a45155d71d",
+  "kernel_source_sha256": "6aebff9a0d952bf1f4fe16434c9f38d8d3500dbea11a77b40129c484eb5d034e",
+  "primary_guest_cases": 72,
+  "additional_guest_cases": 32,
+  "stress_actions": 57600,
+  "model_tests": 13,
+  "standalone": "passed",
+  "performance_boots": 300,
+  "performance_worker_records": 2400,
+  "controlled_pressure_boots": 2,
+  "main_worker_records": 1920,
+  "main_benchmark_boots": 240,
+  "standalone_kernel_sha256": "c4c3104f7fc6d72a2961bb4d58b6d0749e8e524ee55a7d8b3528a6197758673e",
+  "matches_validated_kernel": true
+}

@@ -1,120 +1,157 @@
-# MLFQ scheduling in xv6-riscv
+# Multicore MLFQ scheduler for xv6-riscv
 
-Aayush Kuloor — CS 330 Operating Systems project.
+A preemptive four-level feedback scheduler with shared FIFO run queues,
+multicore CPU ownership, elapsed-time accounting, independent quanta and
+allotments, periodic boosts, runtime configuration, affinity, and kernel traces.
 
-This implementation adds four logical priority queues, CPU-based demotion,
-configurable quanta, periodic global boosts, and process scheduling statistics.
-It uses one CPU and xv6's existing process table to keep the kernel changes
-small and explainable. No linked lists, dynamic run queues, or new locks.
+Base: MIT xv6-riscv commit `fa2ddcb7ca87a77af579380a6eafd5aff163b44f`.
+The default build runs four CPUs; builds with one through eight CPUs are supported.
 
-Upstream: MIT xv6-riscv, commit
-`fa2ddcb7ca87a77af579380a6eafd5aff163b44f`.
+## Build and run
 
-## Run inside Ubuntu / WSL
+Inside Ubuntu / WSL:
 
 ```bash
 cd '/mnt/c/Users/Aayush/IITGN/CS 330/MLFQScheduler/xv6'
 make qemu
 ```
 
-At the xv6 `$` prompt:
+For an extracted archive, enter its `xv6` directory before running `make qemu`.
+
+At the xv6 prompt:
 
 ```text
 schedstat
 schedtest
-schedbench mixed 400 4
-schedbench pipe 400 4
-schedbench trace 75
+schedstress 7 100 12
+schedbench mixed 1200 8
+schedbench pipe 1200 8
 ```
 
-Exit QEMU: **Ctrl-a, then x**. `trace 75` takes about 7.5 seconds and prints a
-diagnostic priority timeline; trace printing is excluded from performance runs.
-
-Change the policy or parameters from the Ubuntu shell:
+Exit QEMU with **Ctrl-a, then x**. Change build parameters in the Ubuntu shell:
 
 ```bash
-make qemu SCHED=DEFAULT
-make qemu SCHED=MLFQ QUANTA=2,4,8,16 BOOST=128
-make qemu SCHED=MLFQ BOOST=0
+make qemu CPUS=8
+make qemu SCHED=DEFAULT CPUS=4
+make qemu SCHED=MLFQ CPUS=4 QUANTA=1,2,4,8 ALLOTMENTS=4,8,16,32 BOOST=64
 ```
 
-The Makefile rebuilds automatically when these settings change. `BOOST=0`
-disables boosting. Only `CPUS=1` is supported. Default quanta are 1,2,4,8 ticks,
-with boosting every 64 ticks. Upstream's timer is unchanged: approximately
-100 ms per tick on QEMU virt.
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `SCHED` | MLFQ | MLFQ or instrumented DEFAULT policy |
+| `CPUS` | 4 | 1 through 8 emulated CPUs |
+| `QUANTA` | 1,2,4,8 | Peer rotation intervals, in ticks |
+| `ALLOTMENTS` | 2,4,8,16 | Cumulative CPU budget before demotion |
+| `BOOST` | 100 | Global boost interval; zero disables it |
+| `TIMER` | 100000 | Time-counter units per interrupt: 10 ms on QEMU virt |
+| `CHECKS` | 1 | Full scheduler invariant checks; zero omits automatic scans |
 
-## Where to read the code
+A configuration stamp forces a rebuild when any setting changes. The command
+runner makes an independent kernel and disk-image copy for every guest boot.
 
-1. `xv6/kernel/sched.h`: configuration and the statistics record.
-2. `xv6/kernel/proc.h`: three ordering/timestamp fields and the statistics record.
-3. `xv6/kernel/proc.c`: `runnable`, `schedtick`, `schedpreempt`, and the MLFQ
-   branch of `scheduler`. These are the main scheduling changes.
-4. `xv6/kernel/trap.c`: one accounting call and conditional timer preemption.
-5. `getpinfo` and `kwaitstats` in `proc.c`: safely export live/final statistics.
-6. `xv6/user/schedtest.c` and `schedbench.c`: tests and workloads.
+## Runtime controls
 
-Comments beginning with **Viva**, **Why**, or **Common** explain likely questions
-and changes beside the relevant code. [The walkthrough](docs/WALKTHROUGH.md)
-explains the control flow and common modifications in more detail.
+These commands run inside xv6 and take effect without rebuilding:
 
-## Rules
+```text
+schedctl
+schedctl boost 64
+schedctl inherit 1
+schedctl 1 2 4 8 4 8 16 32 100
+schedctl trace 1
+schedstress 19 20 6
+schedtrace
+schedctl trace 0
+```
 
-- Q0 is highest. A new process starts there.
-- Choose the highest nonempty level, then its oldest FIFO position.
-- Use an entire quantum across timer ticks unless higher-priority work arrives.
-- Consuming the allotment demotes a process; Q3 rotates without further demotion.
-- Blocking preserves the level and consumed CPU budget. Waking joins its level's tail.
-- Higher-priority preemption preserves the remaining budget and FIFO position.
-- Global boosts reset priorities/budgets, including sleepers, without waking them.
-- At a boost, runnable FIFO positions retain their relative order; the running
-  process moves to the tail. Lifetime statistics are never reset by a boost.
-- `exec` preserves history; a forked child starts fresh. Reused slots start fresh.
+The nine numeric parameters are four quanta, four allotments, and a boost
+interval. Allotments must be positive multiples of their quanta. A policy
+configuration update resets live priorities/budgets atomically and preserves
+lifetime counters. Trace toggling is observational: it preserves budgets and
+the boost deadline. Trace dumps freeze capture before console output; re-enable it explicitly to
+continue recording. Overwritten records are detected.
 
-[Design and limitations](docs/DESIGN.md) defines the exact behavior and metrics.
+`setaffinity(mask)` is also available to user programs. A mask change excluding
+the current CPU migrates the caller before returning to user space.
 
-## Reproduce tests and evaluation
+## Scheduling rules
 
-From the outer project folder, inside Ubuntu:
+- Q0 is highest. Choose the oldest eligible process in the highest nonempty queue.
+- A quantum rotates equal-priority peers; a cumulative allotment demotes a process.
+- Execution is charged on timers, blocking, yield, exit, and snapshots. Short
+  bursts retain their consumed time rather than escaping timer sampling.
+- Blocking and early yield preserve debt. Higher-priority preemption preserves
+  the remaining turn and returns it to the front; voluntary yield joins the tail.
+- Q3 rotates without further demotion. Excess execution time is carried forward.
+- Global boosts charge running intervals before resetting live priorities.
+  Sleeping processes remain asleep; old queues merge in Q0 through Q3 FIFO order.
+- Fork inherits affinity and, by default, consumed scheduling budgets. Exec
+  retains history. Independent benchmark jobs explicitly start fresh at Q0.
+- Every CPU checks preemption on its local timer. This version uses periodic
+  timer response rather than cross-hart rescheduling interrupts.
+
+## Source map
+
+| File | Responsibility |
+| --- | --- |
+| `xv6/kernel/sched.c` | Queues, locking, budgets, accounting, controls, traces, invariants |
+| `xv6/kernel/sched.h` | Shared configuration/statistics/event ABI |
+| `xv6/kernel/proc.c` | Lifecycle hooks and context-switch integration |
+| `xv6/kernel/trap.c` | Per-hart timer checks and global boost clock |
+| `xv6/user/schedtest.c` | Targeted correctness and race tests |
+| `xv6/user/schedstress.c` | Seeded lifecycle, IPC, affinity, and configuration stress |
+| `scripts/replay_trace.py` | Independent policy/ownership/budget replay model |
+| `scripts/run_tests.py` | Full validation matrix and recorded results |
+
+Read [DESIGN.md](docs/DESIGN.md), [WALKTHROUGH.md](docs/WALKTHROUGH.md), and
+[TESTING.md](docs/TESTING.md) for the implementation and verification details.
+[REPORT.md](docs/REPORT.md) records measurements and limitations.
+
+## Reproduce verification and measurements
+
+From the outer project folder inside Ubuntu:
 
 ```bash
-python3 scripts/xv6.py --policy MLFQ --command schedtest --command forktest --command 'usertests -q'
-python3 scripts/xv6.py --policy DEFAULT --command schedtest --command forktest --command 'usertests -q'
-python3 scripts/xv6.py --boost 0 --command schedtest
-python3 scripts/xv6.py --quanta 2,4,8,16 --boost 128 --command schedtest
-
-python3 scripts/benchmark.py --repeats 10 --units 400 --output results/main
-.venv/bin/python scripts/analyze.py results/main
-python3 scripts/diagnostics.py
-.venv/bin/python scripts/plot_trace.py
-python3 scripts/package.py
+python3 scripts/xv6.py --cpus 4 --command schedtest
+python3 scripts/run_tests.py
+python3 scripts/evaluate.py
+python3 scripts/verify_release.py
 ```
 
-Use `--log results/raw/name.log` to keep individual test logs. The console
-driver and benchmark runner use only Python's standard library. Only plotting
-requires matplotlib, installed in the project-local `.venv`:
+Release verification also checks CPU counts 3, 5, 6, and 7 and rebuilds/tests
+the exported source in a clean temporary directory.
+
+The full test matrix uses both policies and 1, 2, 4, and 8 CPUs. It includes the
+complete upstream suite, seeded stress, trace replay, and overflow validation.
+Use a separate `--output` directory to preserve an earlier run. For a shorter
+local check:
+
+```bash
+python3 scripts/run_tests.py --cpus 4 --seeds 1 --quick --output results/local-check
+```
+
+Collection and testing require only Python's standard library. Plotting uses:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install matplotlib
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
-`results/main/samples.csv` contains the worker-level measurements;
-`summary.csv` contains run-level summaries. `metadata.json` records upstream
-commit, a source hash, compiler, QEMU, parameters, and run order. Raw serial logs
-are retained. Use a different `--output` directory to preserve a previous run.
+Current results are under `results/v2/`. Earlier single-core results under
+`results/main/` and `results/diagnostics/` are historical, not measurements of
+the multicore implementation. The working directory also retains the prior
+source in `reference/single-core.zip`. Historical data and development runs are
+excluded from the source archive, which includes canonical current validation
+and evaluation results. It excludes
+Git internals, virtual environments,
+generated build objects, and temporary guest images.
 
-Read [the report](docs/REPORT.md) for the measured results and
-[the demo guide](docs/DEMO.md) for a short presentation sequence.
+## Scope
 
-## Important limits
+This is a global-queue scheduler for xv6's bounded process table, not a per-CPU
+work-stealing design. A shared lock serializes policy decisions. Priority
+response is bounded by the next safe timer point plus lock/kernel delays;
+it is not a real-time guarantee. Fork inheritance removes a fresh-budget reset
+but does not implement per-user or process-family scheduling groups.
 
-This is a single-CPU teaching scheduler. CPU service uses tick sampling, so
-short bursts can be undercounted; preserving budgets prevents resets across
-sleep, but does not provide perfect protection against sub-tick gaming or fork
-gaming. Wakeup delay uses the finer RISC-V time counter. Dispatch counts are
-not a measurement of scheduler execution time or distinct-process switches.
-MLFQ is expected to trade CPU-job fairness/latency for interactive responsiveness;
-it need not outperform the default policy on every workload.
-
-MIT's original license remains in `xv6/LICENSE`. The initial proposal is in
-`PROJECT_PLAN.md`; the implementation follows the later simplicity requirement.
+MIT's original license is retained in `xv6/LICENSE`.

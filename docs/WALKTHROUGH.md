@@ -1,109 +1,86 @@
-# Reading and explaining the code
+# Execution walkthrough
 
-Read the kernel changes first. The benchmark and plotting scripts are supporting
-tools; they are not part of the scheduling mechanism.
+## Admission and dispatch
 
-## A process's path through MLFQ
+`allocproc()` initializes a process while holding its existing process lock.
+`sched_alloc()` creates a fresh statistics record under the scheduler lock.
+A fork then copies affinity and, when enabled, scheduling debt from its parent.
+It never copies lifetime counters. `sched_ready()` inserts the runnable child.
 
-1. `allocproc` clears `ss`, so a child begins at Q0 with `used=0`.
-2. `runnable` sets its state and gives it the next FIFO position.
-3. `scheduler` chooses the runnable process with the smallest level, then the
-   smallest FIFO position. `dispatch` updates statistics and sets RUNNING.
-4. Each timer interrupt calls `schedtick` once. The running process receives
-   one CPU tick in its current level. `used` increases.
-5. At quantum expiry, `schedtick` demotes it (unless already at Q3), clears
-   `used`, assigns a new FIFO position, and asks for preemption.
-6. `schedpreempt` also asks for preemption if a higher-priority process is ready.
-   Otherwise the process continues; it does not context-switch on every tick.
-7. A sleeping process keeps its budget. `wakeup` makes it runnable at its
-   level's tail and starts the wakeup-delay timestamp.
-8. At a global boost, eligible processes return to Q0. Sleeping processes
-   remain asleep. Lifetime counters remain intact.
-9. On exit, `waitstats` lets the parent retrieve the final record before it
-   frees the process slot. Ordinary wait uses the same path without a record.
+Each CPU's scheduler peeks at the highest eligible queue entry, releases the
+queue lock, and takes the candidate's process lock. `sched_claim()` then
+reacquires the queue lock and validates the candidate again. Another CPU may
+have claimed it, or higher-priority work may have arrived in the meantime.
+An unsuccessful claim retries; it never dispatches a stale selection.
 
-## Worked example
+A successful claim removes the process, publishes its CPU owner, records its
+run-start time, and releases the queue lock. The process lock alone crosses
+`swtch()`, preserving xv6's context-switch contract.
 
-With `[1,2,4,8]` and no boost, one CPU-bound process receives:
+## Execution budgets
 
-```text
-charged CPU tick  0   1     3         7                15
-queue            Q0  Q1    Q2        Q3               Q3
-used             0   0     0         0                0
-```
+The default quanta are 1, 2, 4, and 8 ticks. Default allotments are twice those
+values. With no blocking or boosts, a fresh CPU-bound process receives 2 ticks
+at Q0, 4 at Q1, and 8 at Q2 before reaching Q3. It can rotate among peers several
+times before demotion.
 
-These are charged CPU ticks, not necessarily consecutive wall-clock ticks.
-Other processes and sleeping can stretch the timeline. At a sampled CPU count
-of 5, the process is in Q2 with `used=2`. If it sleeps and wakes, it is still
-in Q2 with `used=2`, leaving 2 ticks before demotion.
+`charge()` computes elapsed time since the last accounting point. It updates
+total CPU time and the per-level/per-CPU breakdown, then consumes that interval
+against the current allotment. If the interval crosses a demotion boundary,
+its remaining portion is charged at the next level. At Q3, modulo arithmetic
+bounds the work needed even after a long delayed interrupt.
 
-## Likely questions
+A quantum expiration requests rotation. An allotment expiration requests
+rotation and demotion. These decisions are separate. An early block or yield
+never erases the consumed portion of either budget.
 
-**Where are the queues?** The process table is the storage. Each level defines
-a logical queue and `ready_order` defines its FIFO ordering. This is not merely
-scanning by array index: the timestamp tie-breaker provides round-robin order.
+## Returning to the scheduler
 
-**Why do we need `ready_order`?** Without it, repeatedly choosing the first
-matching table entry could favor low-index processes. After using its quantum,
-a process receives a new, larger sequence number and goes behind its peers.
+Timer paths call `schedpreempt()` on the CPU that owns the running process.
+It charges execution and requests a switch on expiry, on a pending reset, or
+when higher-priority eligible work is ready. Other processes pinned to a
+different CPU do not cause an irrelevant preemption.
 
-**Why does sleeping not reset `used`?** Otherwise a CPU-heavy process could
-sleep just before expiry and repeatedly buy a fresh high-priority quantum.
-Cumulative charging prevents that reset trick. It does not fix sub-tick sampling.
+`sched_stop()` closes the running interval, clears CPU ownership, and changes
+state while holding both locks. A voluntary yield joins the queue's tail.
+Priority preemption with a partial turn joins the front. Blocking leaves the
+process off the queues. `wakeup()` reinserts a sleeper at its current level.
 
-**Is a quantum different from an allotment?** Yes. A quantum limits one turn;
-an allotment limits total service at a priority. This simple version makes the
-allotment one quantum. A general version would track both separately.
+## Boosts and configuration
 
-**Why not always call yield on a timer tick?** Q1/Q2/Q3 have multi-tick slices.
-They continue until expiry or higher-priority readiness. Timer interrupts still
-occur to update counters and check whether preemption is needed.
+Only CPU0 advances the global boost deadline. Under the scheduler lock it
+closes all running CPU intervals at one timestamp, resets live budgets, and
+merges the old queues. It never acquires a process lock while holding the
+scheduler lock. Each owning CPU observes the reset at its next timer point.
 
-**Why does an I/O-bound process stay high?** Its CPU budget grows slowly while
-it blocks. It is not automatically promoted on every I/O operation. Eventually
-it can still be demoted after accumulating enough charged CPU time.
+Runtime policy configuration uses the same atomic reset mechanism. Disabling
+boosts does not erase accumulated statistics. Enabling or disabling trace
+capture uses a separate observational command so measurement cannot reset
+scheduling history.
 
-**Why boost sleeping processes?** A program's behavior may change. Resetting
-its budget lets a formerly CPU-heavy process recover priority when it wakes.
-Boosting must not change SLEEPING to RUNNABLE.
+## Statistics and traces
 
-**How does boosting help starvation?** It periodically puts old jobs at Q0,
-alongside newer jobs. FIFO order and bounded quanta then give them service.
-The finite admission-pressure experiment shows this under sustained arrivals.
-There is no real-time guarantee for arbitrary kernel/arrival conditions.
+Snapshots and final-child statistics share the same exported structure.
+`waitstats()` copies a child's record before freeing its slot. Live snapshots
+close an executing interval and include any open waiting/sleeping interval in
+the returned copy. CPU time equals both the per-level and per-CPU sums.
+Setup, runnable wait, execution, and sleep exactly partition a process's lifetime.
 
-**Does a boost always help interactive latency?** No. Promoting many CPU jobs
-can temporarily put them ahead of an interactive job. The interval is a tradeoff.
+The trace contains an initial snapshot followed by queue, execution, ownership,
+and lifecycle events. Sequence numbers and a loss counter expose overwritten
+records. The host replay model reconstructs queues and budgets independently.
+It checks each dispatch and verifies that every charged interval matches its
+run-start/end timestamps.
 
-**Why use one CPU?** Interrupt disabling plus process locks makes selection and
-sequence updates straightforward. Multiple CPUs require global synchronization,
-candidate revalidation, and cross-core preemption; changing CPUS alone is unsafe.
+## Configuration changes
 
-**Does a process with zero CPU ticks do no work?** No. It may execute entirely
-between sample interrupts. Wakeup latency is measured at a finer resolution.
-
-**Is `dispatches` the number of context switches?** It counts scheduler entries
-into RUNNING. A process can be chosen again without another PID running in between.
-
-**How is the baseline fair?** It keeps xv6's table-order selection and one-tick
-timer yielding. It shares the same instrumentation, build settings, and workloads.
-Work checksums are compared across policies.
-
-## Common modifications
-
-| Requested change | Where and what to change |
+| Change | Location |
 | --- | --- |
-| Longer slices | `make QUANTA=2,4,8,16 qemu` |
-| More/less frequent boosting | `make BOOST=32 qemu` or `BOOST=128` |
-| Disable boosts | `make BOOST=0 qemu` |
-| Start children at parent's priority | In `kfork`, copy only `ss.level` and possibly `ss.used`; leave lifetime counters zero |
-| Reset priority on exec | Add a budget/level reset in `kexec`; explain the new exec-gaming loophole |
-| Promote on every wakeup | In `wakeup`, reset level/budget; explain how this changes the anti-gaming rule |
-| Several turns before demotion | Introduce a separate allotment counter; slice expiry rotates but allotment expiry demotes |
-| Bottom queue uses FCFS | Change bottom-level expiry behavior; explain loss of bounded peer service |
-| More queues | Change NQUEUE, quanta, and the four-column user output/tests; do not change only NQUEUE |
-| Faster timer | Change both initial and recurring timer intervals in `start.c`/`trap.c`, rebuild both policies, rerun experiments |
-| SMP | Redesign synchronization; the current single-CPU assumptions do not carry over |
-
-Use `git -C xv6 diff` to review changes to upstream files and
-`git -C xv6 status --short` to include newly added files in that review.
+| Quantum or allotment values | Build arguments or `schedctl` runtime configuration |
+| Boost frequency | `BOOST` or `schedctl boost` |
+| Fork budget inheritance | `schedctl inherit` / configuration flag |
+| Timer resolution | `TIMER`; applied to initial and recurring per-hart timers |
+| CPU affinity | `setaffinity(mask)` syscall |
+| Automatic invariant scans | `CHECKS`; explicit `schedcheck()` remains available |
+| Queue count | Shared ABI, default arrays, queue operations, tools, and tests must all change together |
+| Per-CPU queues or immediate rescheduling IPIs | Requires a different synchronization/preemption design |

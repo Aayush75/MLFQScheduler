@@ -1,0 +1,45 @@
+{
+  "started_utc": "2026-11-20T13:20:57.740496+00:00",
+  "version": 2,
+  "upstream_commit": "fa2ddcb7ca87a77af579380a6eafd5aff163b44f",
+  "source_sha256": "c7839c6fa733032b1ebbae59588455a87183d9b99b65ce6f7ecd12a45155d71d",
+  "kernel_source_sha256": "6aebff9a0d952bf1f4fe16434c9f38d8d3500dbea11a77b40129c484eb5d034e",
+  "timebase_hz": 10000000,
+  "timer_interval": 100000,
+  "cpus": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "repeats": 3,
+  "units": 1200,
+  "fair_ms": 400,
+  "workers": 8,
+  "boost": 100,
+  "quanta": "1,2,4,8",
+  "allotments": "2,4,8,16",
+  "checks": 1,
+  "modes": [
+    "cpu"
+  ],
+  "workload_fork_inherit": 0,
+  "host": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "qemu": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+  "compiler": "riscv64-linux-gnu-gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "ordering": "alternate policy order by repetition; isolated kernel and disk image per boot",
+  "kernels": {
+    "DEFAULT-1cpu": "9dc2ecc9d9a2e0458862805285018d2b997331a26a22d3f2391d4e30e561f8b0",
+    "MLFQ-1cpu": "a0622696606b19591953e005c7921b88672e8d213a1e88a467019017a49ac9e3",
+    "DEFAULT-2cpu": "89c7053f1e7868dcc730302b1bd34d3cff739cf9bdeb4711b3e8a1fd743e6481",
+    "MLFQ-2cpu": "23c3e0fde63898486d157ac5edfdcb93991a010532b9cd05c5adf9b72565fb5a",
+    "DEFAULT-4cpu": "b442448e4f18006a59950a42984c991edce314f628b9669e5bda25465858e2b3",
+    "MLFQ-4cpu": "c4c3104f7fc6d72a2961bb4d58b6d0749e8e524ee55a7d8b3528a6197758673e",
+    "DEFAULT-8cpu": "2f7e01d22c93ec3002e85abd84ef1fc2e80e9361b50c2658b79ff70460c09404",
+    "MLFQ-8cpu": "57c208d9509b6123ebc51786579030be5b6d08dc15d27f4dfcc1b70a31501043"
+  },
+  "finished_boots": 24,
+  "worker_records": 192,
+  "finished_utc": "2026-11-20T13:23:56.853720+00:00"
+}
